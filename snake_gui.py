@@ -8,6 +8,13 @@ WIDTH = 800
 HEIGHT = WIDTH * 0.75
 PLAYER_SIZE = 30
 ENEMY_SIZE = 20
+TEXT_SIZE = 50
+
+#declare variable
+score = 0
+def update_score():
+    score += 1
+
 
 #build window
 
@@ -22,6 +29,12 @@ player = canvas.create_rectangle(WIDTH/2-(PLAYER_SIZE/2), HEIGHT/2-(PLAYER_SIZE/
 
 #make alive bool
 alive = True
+
+#create score text
+var = tk.StringVar()
+label = tk.Label(root, textvariable=var)
+var.set(score)
+label.pack()
 
 #movemenet function
 def move_left(event):
@@ -47,18 +60,19 @@ def spawn_enemy():
     enemy = canvas.create_rectangle(x, 0, x+ENEMY_SIZE, ENEMY_SIZE, fill = "#FF0000")
     enemies.append(enemy)
 
-
+    
 
 
 #run game
 def run_game():
     global alive
+    global score
     if not alive:
         canvas.delete("all")
         canvas.create_text(WIDTH//2,HEIGHT//2, text="YOU DIED",fill="#5C0606", font=("Arial", 48, "bold"))
         
 
-    if random.randint(1,20)==1:
+    elif random.randint(1,20)==1:
         spawn_enemy()
 
     for enemy in enemies:
@@ -70,9 +84,13 @@ def run_game():
 
             if ex1 < px2 and ex2 > px1 and ey1 < py2 and ey2 > py1:
                 alive = False
+        if ey1 >= HEIGHT:
+            update_score()
+        
 
 
-    root.after(50, run_game)
+
+    root.after(10, run_game)
 
 
 #main loop
