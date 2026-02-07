@@ -9,6 +9,7 @@ HEIGHT = WIDTH * 0.75
 PLAYER_SIZE = 30
 ENEMY_SIZE = 20
 TEXT_SIZE = 50
+BIGONE_SIZE = 60
 
 #declare variable
 
@@ -28,7 +29,7 @@ canvas.pack()
 player = None
 score_text = None
 enemies = []
-
+bigones = []
 
 #start screen
 
@@ -52,6 +53,7 @@ def start_game(event=None):
     alive = True
     score = 0
     enemies = []
+    bigones = []
     canvas.delete("all")
 
     player = canvas.create_rectangle(WIDTH/2-(PLAYER_SIZE/2), HEIGHT/2-(PLAYER_SIZE/2), WIDTH/2+(PLAYER_SIZE/2), HEIGHT/2+(PLAYER_SIZE/2), fill="#00FF37")
@@ -92,6 +94,10 @@ def spawn_enemy():
     enemy = canvas.create_rectangle(x, 0, x+ENEMY_SIZE, ENEMY_SIZE, fill = "#FF0000")
     enemies.append(enemy)
 
+def spawn_bigone():
+    x = random.randint(0, WIDTH - BIGONE_SIZE)
+    enemy = canvas.create_rectangle(x, 0, x + BIGONE_SIZE, BIGONE_SIZE, fill="#8B0000")
+    bigones.append(enemy)
     
 
 
@@ -106,8 +112,10 @@ def run_game():
         return
         
 
-    elif random.randint(1,1)==1:
+    elif random.randint(1,10)==1:
         spawn_enemy()
+    elif random.randint(1,120)==1:
+        spawn_bigone()
 
     for enemy in enemies:
         canvas.move(enemy, 0, 10)
@@ -119,6 +127,22 @@ def run_game():
             canvas.delete(enemy)
             enemies.remove(enemy)
             continue
+        if canvas.bbox(enemy) and canvas.bbox(player):
+            px1,py1,px2,py2 = canvas.bbox(player)
+
+            if ex1 < px2 and ex2 > px1 and ey1 < py2 and ey2 > py1:
+                alive = False
+    
+    for enemy in bigones:
+        canvas.move(enemy, 0, 7)
+        ex1, ey1, ex2, ey2 = canvas.bbox(enemy)
+
+        if ey2 > HEIGHT:
+            score += 5
+            canvas.itemconfig(score_text, text=f"{score}")
+            canvas.delete(enemy)
+            bigones.remove(enemy)
+            continue
 
         if canvas.bbox(enemy) and canvas.bbox(player):
             px1,py1,px2,py2 = canvas.bbox(player)
@@ -127,7 +151,7 @@ def run_game():
                 alive = False
         
 
-    root.after(50, run_game)
+    root.after(40, run_game)
 
 
 #main loop
