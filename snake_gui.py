@@ -11,11 +11,15 @@ ENEMY_SIZE = 20
 TEXT_SIZE = 50
 BIGONE_SIZE = 60
 
+BAR_WIDTH = 150
+BAR_SPEED = 12
+
 #declare variable
 
 alive = True
 score = 0
 game_state = "start"
+next_event_score = 250
 
 
 #build window
@@ -30,6 +34,8 @@ player = None
 score_text = None
 enemies = []
 bigones = []
+bars = []
+warnings = []
 
 #start screen
 
@@ -48,12 +54,17 @@ def show_game_over_screen():
 #game start(kind og)
 
 def start_game(event=None):
-    global alive, score, enemies, player, score_text, game_state
+    global alive, score, enemies, bigones, bars, warnings
+    global player, score_text, game_state, next_event_score
+
     game_state = "running"
     alive = True
     score = 0
     enemies = []
     bigones = []
+    bars = []
+    warnings = []
+    next_event_score = 250
     canvas.delete("all")
 
     player = canvas.create_rectangle(WIDTH/2-(PLAYER_SIZE/2), HEIGHT/2-(PLAYER_SIZE/2), WIDTH/2+(PLAYER_SIZE/2), HEIGHT/2+(PLAYER_SIZE/2), fill="#00FF37")
@@ -99,11 +110,35 @@ def spawn_bigone():
     enemy = canvas.create_rectangle(x, 0, x + BIGONE_SIZE, BIGONE_SIZE, fill="#8B0000")
     bigones.append(enemy)
     
+def trigger_specical_event():
+    x = random.randint(0, WIDTH - BAR_WIDTH)
+    flash_warning(x)
 
+def flash_warning(x, flashes = 6):
+    warning = canvas.create_rectangle(x, 0, x + BAR_WIDTH, 20, fill="yellow")
+    warnings.append(warning)
+
+    def animate(count):
+        if count == 0:
+            if warning in warnings:
+                canvas.delete(warning)
+                warnings.remove(warning)
+            spawn_bar(x)
+            return
+        current = canvas.itemcget(warning, "fill")
+        new = "" if current == "yellow" else "yellow"
+        canvas.itemconfig(warning, fill = new)
+
+        root.after(100, lambda: animate(count-1))
+    animate(flashes)
+
+def spawn_bar(x):
+    bar = canvas.create_rectangle(x, 0, x + BAR_WIDTH, 40, fill="#AA0000")
+    bars.append(bar)
 
 #run game
 def run_game():
-    global alive, score, game_state
+    global alive, score, game_state, next_event_score
     if game_state != "running":
         return
     if not alive:
@@ -112,9 +147,9 @@ def run_game():
         return
         
 
-    elif random.randint(1,10)==1:
+    if random.randint(1,10)==1:
         spawn_enemy()
-    elif random.randint(1,120)==1:
+    if random.randint(1,120)==1:
         spawn_bigone()
 
     for enemy in enemies:
@@ -124,6 +159,9 @@ def run_game():
         if ey2 > HEIGHT:
             score += 1
             canvas.itemconfig(score_text,text=f"{score}")
+            if score >= next_event_score:
+                trigger_specical_event()
+                next_event_score += 250
             canvas.delete(enemy)
             enemies.remove(enemy)
             continue
@@ -140,6 +178,9 @@ def run_game():
         if ey2 > HEIGHT:
             score += 5
             canvas.itemconfig(score_text, text=f"{score}")
+            if score >= next_event_score:
+                trigger_specical_event()
+                next_event_score+= 250
             canvas.delete(enemy)
             bigones.remove(enemy)
             continue
@@ -149,6 +190,19 @@ def run_game():
 
             if ex1 < px2 and ex2 > px1 and ey1 < py2 and ey2 > py1:
                 alive = False
+
+    for bar in bars[:]:
+        canvas.move(bar, 0, BAR_SPEED)
+        bx1, by1, bx2, by2 = canvas.bbox(bar)
+        if by2 > HEIGHT:
+            canvas.delete(bar)
+            bars.remove(bar)
+            continue
+
+        px1, py1, px2, py2 = canvas.bbox(player)
+        if bx1 < px2 and bx2 > px1 and by1 < py2 and by2 > py1:
+            alive = False
+
         
 
     root.after(40, run_game)
