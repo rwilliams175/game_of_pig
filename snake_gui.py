@@ -219,7 +219,7 @@ def run_game():
     if now >= next_vertical_time:
         trigger_vertical_event()
         next_vertical_time = now + random.randint(1000,10000)
-    if random.randint(1,10)==1:
+    if random.randint(1,5)==1:
         spawn_enemy()
     if random.randint(1,120)==1:
         spawn_bigone()
