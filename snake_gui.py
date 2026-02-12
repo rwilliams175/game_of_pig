@@ -1,6 +1,9 @@
 import tkinter as tk
 from tkinter import font
 import random
+import time
+
+#what I added was a dynamic scoring system, different sized blocks, and a restart function. However, I decided to have fun and have AI help me add in some other features like splash screens, special events, etc.
 
 #declare some constatnts
 
@@ -11,6 +14,7 @@ ENEMY_SIZE = 20
 TEXT_SIZE = 50
 BIGONE_SIZE = 60
 
+EVENT_INTERVAL = 7000
 BAR_WIDTH = 150
 BAR_SPEED = 12
 
@@ -19,7 +23,9 @@ BAR_SPEED = 12
 alive = True
 score = 0
 game_state = "start"
-next_event_score = 250
+
+next_horizontal_time = 0
+next_vertical_time = 0
 
 
 #build window
@@ -36,6 +42,23 @@ enemies = []
 bigones = []
 bars = []
 warnings = []
+vertical_warnings = []
+vertical_bars = []
+
+
+
+def create_heart(x, y, size=20, color="red"):
+    return canvas.create_polygon(
+        x, y + size * 0.3,
+        x - size * 0.5, y - size * 0.1,
+        x - size * 0.5, y - size * 0.6,
+        x - size * 0.2, y - size * 0.9,
+        x, y - size * 0.6,
+        x + size * 0.2, y - size * 0.9,
+        x + size * 0.5, y - size * 0.6,
+        x + size * 0.5, y - size * 0.1,
+        fill=color
+    )
 
 #start screen
 
@@ -55,7 +78,7 @@ def show_game_over_screen():
 
 def start_game(event=None):
     global alive, score, enemies, bigones, bars, warnings
-    global player, score_text, game_state, next_event_score
+    global player, score_text, game_state, next_horizontal_time, next_vertical_time, vertical_bars, vertical_warnings
 
     game_state = "running"
     alive = True
@@ -64,10 +87,16 @@ def start_game(event=None):
     bigones = []
     bars = []
     warnings = []
-    next_event_score = 250
+    vertical_warnings = []
+    vertical_bars = []
+    
+    now = time.time() * 1000
+    next_horizontal_time = now + random.randint(1000,10000)
+    next_vertical_time = now + random.randint(1000,10000)
+
     canvas.delete("all")
 
-    player = canvas.create_rectangle(WIDTH/2-(PLAYER_SIZE/2), HEIGHT/2-(PLAYER_SIZE/2), WIDTH/2+(PLAYER_SIZE/2), HEIGHT/2+(PLAYER_SIZE/2), fill="#00FF37")
+    player = create_heart(WIDTH//2, HEIGHT//2, size=25, color="#00FF37")
     score_text = canvas.create_text(70, 30, text="0", fill="white", font=("Arial",24))
     run_game()
 
@@ -110,7 +139,7 @@ def spawn_bigone():
     enemy = canvas.create_rectangle(x, 0, x + BIGONE_SIZE, BIGONE_SIZE, fill="#8B0000")
     bigones.append(enemy)
     
-def trigger_specical_event():
+def trigger_horizontal_event():
     x = random.randint(0, WIDTH - BAR_WIDTH)
     flash_warning(x)
 
@@ -136,9 +165,46 @@ def spawn_bar(x):
     bar = canvas.create_rectangle(x, 0, x + BAR_WIDTH, 40, fill="#AA0000")
     bars.append(bar)
 
+def trigger_vertical_event():
+    count = random.randint(2,3)
+    positions = []
+    
+    while len(positions) < count:
+        x = random.randint(0, WIDTH - 40)
+
+        if all(abs(x-p) > 150 for p in positions):
+            positions.append(x)
+    for x in positions:
+        flash_vertical_warning(x)
+def flash_vertical_warning(x, flashes=6):
+    warning = canvas.create_rectangle(x, 0, x + 20, 40, fill="cyan")
+    vertical_warnings.append(warning)
+    def animate(count):
+        if count == 0:
+            if warning in vertical_warnings:
+                canvas.delete(warning)
+                vertical_warnings.remove(warning)
+            spawn_vertical_bar(x)
+            return
+        current = canvas.itemcget(warning,"fill")
+        new = "" if current == "cyan" else "cyan"
+        canvas.itemconfig(warning, fill=new)
+
+        root.after(100, lambda: animate(count-1))
+    animate(flashes)
+def spawn_vertical_bar(x):
+    bar = canvas.create_rectangle(x, 0, x + 40, HEIGHT, fill = "#00A2FF")
+    vertical_bars.append(bar)
+
+    root.after(1000, lambda: remove_vertical_bar(bar))
+def remove_vertical_bar(bar):
+    if bar in vertical_bars:
+        canvas.delete(bar)
+        vertical_bars.remove(bar)
+
 #run game
 def run_game():
-    global alive, score, game_state, next_event_score
+    global alive, score, game_state, next_horizontal_time, next_vertical_time
     if game_state != "running":
         return
     if not alive:
@@ -146,22 +212,25 @@ def run_game():
         show_game_over_screen()
         return
         
-
+    now = time.time() * 1000
+    if now >= next_horizontal_time:
+        trigger_horizontal_event()
+        next_horizontal_time = now + random.randint(1000,10000)
+    if now >= next_vertical_time:
+        trigger_vertical_event()
+        next_vertical_time = now + random.randint(1000,10000)
     if random.randint(1,10)==1:
         spawn_enemy()
     if random.randint(1,120)==1:
         spawn_bigone()
 
-    for enemy in enemies:
+    for enemy in enemies[:]:
         canvas.move(enemy, 0, 10)
         ex1,ey1,ex2,ey2 = canvas.bbox(enemy)
 
         if ey2 > HEIGHT:
             score += 1
             canvas.itemconfig(score_text,text=f"{score}")
-            if score >= next_event_score:
-                trigger_specical_event()
-                next_event_score += 250
             canvas.delete(enemy)
             enemies.remove(enemy)
             continue
@@ -171,16 +240,13 @@ def run_game():
             if ex1 < px2 and ex2 > px1 and ey1 < py2 and ey2 > py1:
                 alive = False
     
-    for enemy in bigones:
+    for enemy in bigones[:]:
         canvas.move(enemy, 0, 7)
         ex1, ey1, ex2, ey2 = canvas.bbox(enemy)
 
         if ey2 > HEIGHT:
             score += 5
             canvas.itemconfig(score_text, text=f"{score}")
-            if score >= next_event_score:
-                trigger_specical_event()
-                next_event_score+= 250
             canvas.delete(enemy)
             bigones.remove(enemy)
             continue
@@ -199,6 +265,12 @@ def run_game():
             bars.remove(bar)
             continue
 
+        px1, py1, px2, py2 = canvas.bbox(player)
+        if bx1 < px2 and bx2 > px1 and by1 < py2 and by2 > py1:
+            alive = False
+    
+    for bar in vertical_bars[:]:
+        bx1, by1, bx2, by2 = canvas.bbox(bar)
         px1, py1, px2, py2 = canvas.bbox(player)
         if bx1 < px2 and bx2 > px1 and by1 < py2 and by2 > py1:
             alive = False
